@@ -12,6 +12,10 @@ import com.amazonaws.services.cloudwatch.model.GetMetricStatisticsResult;
 import com.amazonaws.services.cloudwatch.model.ListMetricsRequest;
 import com.amazonaws.services.cloudwatch.model.ListMetricsResult;
 import com.amazonaws.services.cloudwatch.model.Metric;
+import com.amazonaws.services.securitytoken.AWSSecurityTokenService;
+import com.amazonaws.services.securitytoken.AWSSecurityTokenServiceClientBuilder;
+import com.amazonaws.services.securitytoken.model.GetCallerIdentityRequest;
+import com.amazonaws.services.securitytoken.model.GetCallerIdentityResult;
 import io.prometheus.client.Collector;
 import io.prometheus.client.Counter;
 
@@ -141,7 +145,6 @@ public class CloudWatchCollector extends Collector {
         }
 
         ArrayList<MetricRule> rules = new ArrayList<MetricRule>();
-
         for (Object ruleObject : (List<Map<String,Object>>) config.get("metrics")) {
           Map<String, Object> yamlMetricRule = (Map<String, Object>)ruleObject;
           MetricRule rule = new MetricRule();
@@ -209,7 +212,12 @@ public class CloudWatchCollector extends Collector {
     public String getMonitoringEndpoint(Region region) {
       return "https://" + region.getServiceEndpoint("monitoring");
     }
-
+    private String get_account_id() {
+	AWSSecurityTokenService sts_client = AWSSecurityTokenServiceClientBuilder.standard().build();
+        GetCallerIdentityRequest request = new GetCallerIdentityRequest();
+	GetCallerIdentityResult response = sts_client.getCallerIdentity(request);
+        return response.getAccount();
+    }
     private List<List<Dimension>> getDimensions(MetricRule rule, AmazonCloudWatchClient client) {
         if (
                 rule.awsDimensions != null &&
@@ -376,7 +384,6 @@ public class CloudWatchCollector extends Collector {
           + " Dimensions: " + rule.awsDimensions + " Statistic: " + statistic
           + " Unit: " + unit;
     }
-
     private void scrape(List<MetricFamilySamples> mfs) throws CloneNotSupportedException {
       ActiveConfig config = (ActiveConfig) activeConfig.clone();
 
@@ -425,6 +432,8 @@ public class CloudWatchCollector extends Collector {
           List<String> labelValues = new ArrayList<String>();
           labelNames.add("job");
           labelValues.add(jobName);
+          labelNames.add("account");
+          labelValues.add(get_account_id());
           labelNames.add("instance");
           labelValues.add("");
           for (Dimension d: dimensions) {
@@ -512,7 +521,6 @@ public class CloudWatchCollector extends Collector {
       mfs.add(new MetricFamilySamples("cloudwatch_exporter_scrape_error", Type.GAUGE, "Non-zero if this scrape failed.", samples));
       return mfs;
     }
-
     /**
      * Convenience function to run standalone.
      */
