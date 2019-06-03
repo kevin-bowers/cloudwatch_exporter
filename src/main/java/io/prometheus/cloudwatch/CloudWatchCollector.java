@@ -402,6 +402,7 @@ public class CloudWatchCollector extends Collector {
 
         String baseName = safeName(rule.awsNamespace.toLowerCase() + "_" + toSnakeCase(rule.awsMetricName));
         String jobName = safeName(rule.awsNamespace.toLowerCase());
+        String accountID = get_account_id();
         List<MetricFamilySamples.Sample> sumSamples = new ArrayList<MetricFamilySamples.Sample>();
         List<MetricFamilySamples.Sample> sampleCountSamples = new ArrayList<MetricFamilySamples.Sample>();
         List<MetricFamilySamples.Sample> minimumSamples = new ArrayList<MetricFamilySamples.Sample>();
@@ -433,7 +434,7 @@ public class CloudWatchCollector extends Collector {
           labelNames.add("job");
           labelValues.add(jobName);
           labelNames.add("account");
-          labelValues.add(get_account_id());
+          labelValues.add(accountID);
           labelNames.add("instance");
           labelValues.add("");
           for (Dimension d: dimensions) {
