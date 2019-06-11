@@ -16,6 +16,11 @@ import com.amazonaws.services.securitytoken.AWSSecurityTokenService;
 import com.amazonaws.services.securitytoken.AWSSecurityTokenServiceClientBuilder;
 import com.amazonaws.services.securitytoken.model.GetCallerIdentityRequest;
 import com.amazonaws.services.securitytoken.model.GetCallerIdentityResult;
+
+import com.amazonaws.services.identitymanagement.AmazonIdentityManagement;
+import com.amazonaws.services.identitymanagement.AmazonIdentityManagementClientBuilder;
+import com.amazonaws.services.identitymanagement.model.ListAccountAliasesResult;
+
 import io.prometheus.client.Collector;
 import io.prometheus.client.Counter;
 
@@ -218,6 +223,14 @@ public class CloudWatchCollector extends Collector {
 	GetCallerIdentityResult response = sts_client.getCallerIdentity(request);
         return response.getAccount();
     }
+    private String get_account_alias() {
+        final AmazonIdentityManagement iam = AmazonIdentityManagementClientBuilder.defaultClient();
+        ListAccountAliasesResult response = iam.listAccountAliases();
+        for (String alias : response.getAccountAliases()) {
+            return alias;
+        }
+        return "false";
+    }
     private List<List<Dimension>> getDimensions(MetricRule rule, AmazonCloudWatchClient client) {
         if (
                 rule.awsDimensions != null &&
@@ -403,6 +416,7 @@ public class CloudWatchCollector extends Collector {
         String baseName = safeName(rule.awsNamespace.toLowerCase() + "_" + toSnakeCase(rule.awsMetricName));
         String jobName = safeName(rule.awsNamespace.toLowerCase());
         String accountID = get_account_id();
+        String accountAlias = get_account_alias();
         List<MetricFamilySamples.Sample> sumSamples = new ArrayList<MetricFamilySamples.Sample>();
         List<MetricFamilySamples.Sample> sampleCountSamples = new ArrayList<MetricFamilySamples.Sample>();
         List<MetricFamilySamples.Sample> minimumSamples = new ArrayList<MetricFamilySamples.Sample>();
@@ -435,6 +449,8 @@ public class CloudWatchCollector extends Collector {
           labelValues.add(jobName);
           labelNames.add("account");
           labelValues.add(accountID);
+	  labelNames.add("account_alias");
+          labelValues.add(accountAlias);
           labelNames.add("instance");
           labelValues.add("");
           for (Dimension d: dimensions) {
@@ -539,4 +555,5 @@ public class CloudWatchCollector extends Collector {
       }
     }
 }
+
 
